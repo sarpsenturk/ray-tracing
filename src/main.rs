@@ -1,5 +1,6 @@
 pub mod vec3;
 pub mod color;
+pub mod ray;
 
 use crate::color::{Color, write_color};
 use std::io::{self, Write};
