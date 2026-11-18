@@ -5,6 +5,8 @@ fn main() {
     print!("P3\n");
     print!("{IMAGE_WIDTH} {IMAGE_HEIGHT}\n255\n");
     for j in 0..IMAGE_HEIGHT {
+        let percentage = j as f32 / IMAGE_HEIGHT as f32;
+        eprintln!("Progress {:.2}", percentage);
         for i in 0..IMAGE_WIDTH {
             let r = i as f64 / (IMAGE_WIDTH - 1) as f64;
             let g = j as f64 / (IMAGE_WIDTH - 1) as f64;
@@ -15,4 +17,5 @@ fn main() {
             print!("{r} {g} {b}\n");
         }
     }
+    eprintln!("Done");
 }
