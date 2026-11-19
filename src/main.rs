@@ -88,8 +88,8 @@ fn main() -> io::Result<()> {
 
     // Render
     let fov = 20.0;
-    let samples = 20;
-    let max_depth = 25;
+    let samples = 100;
+    let max_depth = 50;
     let camera_position = Vec3{x: 13.0, y: 2.0, z: 3.0};
     let camera_direction = Vec3{x: 0.0, y: 0.0, z: 0.0};
     let camera_up = Vec3{x: 0.0, y: 1.0, z: 0.0};
