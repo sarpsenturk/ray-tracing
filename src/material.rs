@@ -1,6 +1,6 @@
 use crate::color::Color;
 use crate::ray::Ray;
-use crate::vec3::{random_unit_vector, reflect, Vec3};
+use crate::vec3::{random_unit_vector, reflect, Vec3, dot};
 
 pub struct SurfaceOutput {
     color: Color,
@@ -38,18 +38,25 @@ impl Material for LambertianMaterial {
 
 pub struct MetallicMaterial {
     color: Color,
+    fuzz: f64,
 }
 
 impl MetallicMaterial {
-    pub fn new(color: Color) -> Self { Self{color} }
+    pub fn new(color: Color, fuzz: f64) -> Self { Self{color, fuzz} }
 }
 
 impl Material for MetallicMaterial {
     fn scatter(&self, ray_in: &Ray, point: &Vec3, normal: &Vec3) -> Option<SurfaceOutput> {
-        let reflected = reflect(ray_in.direction(), normal);
-        Some(SurfaceOutput::new(
-            self.color,
-            Ray::new(*point, reflected),
-        ))
+        let reflected =
+            reflect(ray_in.direction(), normal).normalized() +
+                (random_unit_vector() * self.fuzz);
+        if dot(&reflected, normal) > 0.0 {
+            Some(SurfaceOutput::new(
+                self.color,
+                Ray::new(*point, reflected),
+            ))
+        } else {
+            None
+        }
     }
 }

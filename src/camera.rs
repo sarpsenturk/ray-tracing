@@ -105,8 +105,10 @@ fn ray_color(ray: &Ray, depth: i32, scene: &Scene) -> Color {
     if depth <= 0 { return Color::from(0.0); };
 
     if let Some(hit) = scene.hit(ray, 0.001, f64::INFINITY) {
-        if let Some(surface) = hit.surface() {
-            return *surface.color() * ray_color(surface.scattered(), depth - 1, scene);
+        return if let Some(surface) = hit.surface() {
+            *surface.color() * ray_color(surface.scattered(), depth - 1, scene)
+        } else {
+            Color::from(0.0)
         }
     }
     let unit = ray.direction().normalized();
