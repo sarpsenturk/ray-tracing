@@ -3,10 +3,11 @@ use crate::vec3::{cross, Vec3, random_in_unit_disk};
 use crate::color::{write_color, Color};
 use crate::ray::Ray;
 use std::io::{self, BufWriter, Write};
+use std::num::NonZeroUsize;
 use std::time::Instant;
 use rand::{self};
-use crate::framebuffer::Framebuffer;
 
+#[derive(Debug, Copy, Clone)]
 pub struct Camera {
     image_width: i32,
     image_height: i32,
@@ -83,20 +84,25 @@ impl Camera {
     }
 
     pub fn render<T: Write>(&self, output: &mut T, scene: &Scene) -> io::Result<()> {
-        let mut framebuffer = Framebuffer::new(self.image_width, self.image_height);
+        // Allocate framebuffer
+        let mut framebuffer = vec![u32::default(); (self.image_width * self.image_height) as usize];
+
+        // Determine number of hardware threads
+        let thread_count = std::thread::available_parallelism().map(NonZeroUsize::get).unwrap_or(1);
+        eprintln!("Using {thread_count} threads...");
+
+        let rows_per_thread = (self.image_height as usize + thread_count - 1) / thread_count;
         let start = Instant::now();
-        for j in 0..self.image_height {
-            eprint!("\rProgress: {:.2}%", j as f32 / self.image_height as f32 * 100.0);
-            for i in 0..self.image_width {
-                let color = (0..self.samples)
-                    .fold(Vec3::from(0.0),
-                          |acc, _| {
-                              let ray = self.get_ray(i, j);
-                              acc + ray_color(&ray, self.max_depth, scene)
-                          });
-                framebuffer.write(j, i, u32::from(color * self.pixel_samples_scale));
-            }
-        }
+        std::thread::scope(|s| {
+           for (i, chunk) in framebuffer
+               .chunks_mut(rows_per_thread * self.image_width as usize)
+               .enumerate() {
+               let camera = self.clone();
+               let start = i * rows_per_thread;
+               let end = start + chunk.len() / self.image_width as usize;
+               s.spawn(move || render(camera, start, end, scene, chunk));
+           }
+        });
         let time = start.elapsed();
         eprint!("\nDone. Finished in {} seconds\n", time.as_secs());
 
@@ -104,7 +110,6 @@ impl Camera {
         write!(writer, "P3\n")?;
         write!(writer, "{} {}\n255\n", self.image_width, self.image_height)?;
         framebuffer
-            .buffer()
             .iter()
             .map(Color::from)
             .try_for_each(|color| write_color(&mut writer, &color))
@@ -137,6 +142,21 @@ impl Camera {
         // Returns a random point in the camera defocus disk.
         let p = random_in_unit_disk();
         self.center + (self.defocus_disk_u * p.x) + (self.defocus_disk_v * p.y)
+    }
+}
+
+fn render(camera: Camera, start: usize, end: usize, scene: &Scene, framebuffer: &mut [u32]) {
+    let width = camera.image_width as usize;
+    for j in start..end {
+        for i in 0..width {
+            let mut color = Color::from(0.0);
+            for _ in 0..camera.samples {
+                let ray = camera.get_ray(i as i32, j as i32);
+                color += ray_color(&ray, camera.max_depth, scene)
+            }
+            let idx = (j - start) * camera.image_width as usize + i; // Index relative to this chunk
+            framebuffer[idx] = u32::from(color * camera.pixel_samples_scale);
+        }
     }
 }
 

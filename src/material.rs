@@ -13,7 +13,7 @@ impl SurfaceOutput {
     pub fn scattered(&self) -> &Ray { &self.scattered }
 }
 
-pub trait Material {
+pub trait Material: Send + Sync {
     fn scatter(&self, ray_in: &Ray, point: &Vec3, normal: &Vec3, front_face: bool) -> Option<SurfaceOutput>;
 }
 

@@ -4,7 +4,6 @@ pub mod ray;
 pub mod object;
 pub mod camera;
 pub mod material;
-mod framebuffer;
 
 use crate::vec3::{Vec3};
 use crate::object::{Sphere, Scene};
@@ -89,7 +88,7 @@ fn main() -> io::Result<()> {
 
     // Render
     let fov = 20.0;
-    let samples = 10;
+    let samples = 50;
     let max_depth = 50;
     let camera_position = Vec3{x: 13.0, y: 2.0, z: 3.0};
     let camera_direction = Vec3{x: 0.0, y: 0.0, z: 0.0};

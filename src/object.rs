@@ -20,7 +20,7 @@ impl Hit {
     pub fn surface(&self) -> &Option<SurfaceOutput> { &self.surface }
 }
 
-pub trait Hittable {
+pub trait Hittable: Send + Sync {
     fn hit(&self, ray: &Ray, ray_tmin: f64, ray_tmax: f64) -> Option<Hit>;
 }
 
