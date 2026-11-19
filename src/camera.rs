@@ -84,7 +84,7 @@ impl Camera {
         write!(output, "P3\n")?;
         write!(output, "{} {}\n255\n", self.image_width, self.image_height)?;
         for j in 0..self.image_height {
-            eprintln!("Progress {:.2}", j as f32 / self.image_height as f32);
+            eprint!("\rProgress: {:.2}%", j as f32 / self.image_height as f32 * 100.0);
             for i in 0..self.image_width {
                 let color = (0..self.samples)
                     .fold(Vec3::from(0.0),
@@ -95,6 +95,7 @@ impl Camera {
                 write_color(output, &(color * self.pixel_samples_scale))?
             }
         }
+        eprint!("\nDone");
         Ok(())
     }
 
