@@ -3,11 +3,14 @@ use crate::vec3::Vec3;
 use crate::color::{write_color, Color};
 use crate::ray::Ray;
 use std::io::{self, Write};
+use rand::{self};
 
 pub struct Camera {
     image_width: i32,
     image_height: i32,
     aspect_ratio: f64,
+    samples: i32,
+    pixel_samples_scale: f64,
     center: Vec3,
     pixel00_loc: Vec3,
     pixel_delta_u: Vec3,
@@ -15,9 +18,10 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(image_width: i32, image_height: i32) -> Camera {
+    pub fn new(image_width: i32, image_height: i32, samples: i32) -> Camera {
         let center = Vec3::from(0.0);
         let aspect_ratio = image_width as f64 / image_height as f64;
+        let pixel_samples_scale = 1.0 / samples as f64;
 
         // Determine viewport dimensions.
         let focal_length = 1.0;
@@ -44,6 +48,8 @@ impl Camera {
             image_width,
             image_height,
             aspect_ratio,
+            samples,
+            pixel_samples_scale,
             center,
             pixel00_loc,
             pixel_delta_u,
@@ -57,13 +63,38 @@ impl Camera {
         for j in 0..self.image_height {
             eprintln!("Progress {:.2}", j as f32 / self.image_height as f32);
             for i in 0..self.image_width {
-                let pixel_center = self.pixel00_loc + (self.pixel_delta_u * i as f64) + (self.pixel_delta_v * j as f64);
-                let ray_direction = pixel_center - self.center;
-                let color = ray_color(&Ray::new(self.center, ray_direction), &scene);
-                write_color(output, &color)?
+                let color = (0..self.samples)
+                    .fold(Vec3::from(0.0),
+                          |acc, _| {
+                              acc + ray_color(&self.get_ray(i, j), scene)
+                          });
+                write_color(output, &(color * self.pixel_samples_scale))?
             }
         }
         Ok(())
+    }
+
+    fn get_ray(&self, i: i32, j: i32) -> Ray {
+        // Construct a camera ray originating from the origin and directed at randomly sampled
+        // point around the pixel location i, j.
+
+        let offset = self.sample_square();
+        let pixel_sample = self.pixel00_loc +
+            (self.pixel_delta_u * (i as f64 + offset.x)) +
+            (self.pixel_delta_v * (j as f64 + offset.y));
+
+        let origin = self.center.clone();
+        let direction = pixel_sample - origin;
+        Ray::new(origin, direction)
+    }
+
+    fn sample_square(&self) -> Vec3 {
+        // Returns the vector to a random point in the [-.5,-.5]-[+.5,+.5] unit square.
+        Vec3{
+            x: rand::random::<f64>() - 0.5,
+            y: rand::random::<f64>()  - 0.5,
+            z: 0.0,
+        }
     }
 }
 
