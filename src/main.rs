@@ -23,11 +23,11 @@ const FOCAL_LENGTH: f64 = 1.0;
 
 fn hit_sphere(center: &Vec3, radius: f64, ray: &Ray) -> f64 {
     let oc = center - ray.origin();
-    let a = dot(ray.direction(), ray.direction());
-    let b = -2.0 * dot(ray.direction(), &oc);
-    let c = dot(&oc, &oc) - radius * radius;
-    let discriminant = b*b - 4.0*a*c;
-    if discriminant < 0.0 { -1.0 } else { (-b - discriminant.sqrt()) / (2.0 * a) }
+    let a = ray.direction().sqr_magnitude();
+    let h = dot(ray.direction(), &oc);
+    let c = oc.sqr_magnitude() - radius*radius;
+    let discriminant = h*h - a*c;
+    if discriminant < 0.0 { -1.0 } else { (h - discriminant.sqrt()) / a }
 }
 
 fn ray_color(ray: &Ray) -> Color {
