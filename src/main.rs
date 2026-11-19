@@ -2,7 +2,7 @@ pub mod vec3;
 pub mod color;
 pub mod ray;
 
-use crate::vec3::{Vec3};
+use crate::vec3::{dot, Vec3};
 use crate::color::{Color, write_color};
 use crate::ray::{Ray};
 use std::io::{self, Write};
@@ -21,7 +21,19 @@ const VIEWPORT_HEIGHT: f64 = 2.0;
 const VIEWPORT_WIDTH: f64 = VIEWPORT_HEIGHT * ASPECT_RATIO;
 const FOCAL_LENGTH: f64 = 1.0;
 
+fn hit_sphere(center: &Vec3, radius: f64, ray: &Ray) -> bool {
+    let oc = center - ray.origin();
+    let a = dot(ray.direction(), ray.direction());
+    let b = -2.0 * dot(ray.direction(), &oc);
+    let c = dot(&oc, &oc) - radius * radius;
+    let discriminant = b*b - 4.0*a*c;
+    discriminant >= 0.0
+}
+
 fn ray_color(ray: &Ray) -> Color {
+    if hit_sphere(&Vec3{x: 0.0, y: 0.0, z: -1.0}, 0.5, ray) {
+        return Color{x: 1.0, y: 0.0, z: 0.0};
+    }
     let unit = ray.direction().normalized();
     let a = 0.5 * (unit.y + 1.0);
     Color::from(1.0) * (1.0 - a) + Color{x: 0.5, y: 0.7, z: 1.0} * a
