@@ -1,5 +1,5 @@
 use crate::object::{Hittable, Scene};
-use crate::vec3::{Vec3};
+use crate::vec3::{cross, Vec3};
 use crate::color::{write_color, Color};
 use crate::ray::Ray;
 use std::io::{self, Write};
@@ -8,7 +8,6 @@ use rand::{self};
 pub struct Camera {
     image_width: i32,
     image_height: i32,
-    aspect_ratio: f64,
     samples: i32,
     pixel_samples_scale: f64,
     max_depth: i32,
@@ -19,19 +18,30 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(image_width: i32, image_height: i32, samples: i32, max_depth: i32) -> Camera {
-        let center = Vec3::from(0.0);
+    pub fn new(
+        image_width: i32, image_height: i32,
+        vfov: f64,
+        samples: i32, max_depth: i32,
+        position: Vec3, direction: Vec3, up: Vec3) -> Camera {
+        let center = position;
         let aspect_ratio = image_width as f64 / image_height as f64;
         let pixel_samples_scale = 1.0 / samples as f64;
 
         // Determine viewport dimensions.
-        let focal_length = 1.0;
-        let viewport_height = 2.0;
+        let focal_length = (position - direction).magnitude();
+        let theta = vfov.to_radians();
+        let h = (theta / 2.0).tan();
+        let viewport_height = 2.0 * h * focal_length;
         let viewport_width = viewport_height * aspect_ratio;
 
+        // Calculate the u,v,w unit basis vectors for the camera coordinate frame.
+        let w = (position - direction).normalized();
+        let u = cross(&up, &w);
+        let v = cross(&w, &u);
+
         // Calculate the vectors across the horizontal and down the vertical viewport edges.
-        let viewport_u = Vec3{x: viewport_width, y: 0.0, z: 0.0};
-        let viewport_v = Vec3{x: 0.0, y: -viewport_height, z: 0.0};
+        let viewport_u = u * viewport_width;
+        let viewport_v = v * -viewport_height;
 
         // Calculate the horizontal and vertical delta vectors from pixel to pixel.
         let pixel_delta_u = viewport_u / image_width as f64;
@@ -40,15 +50,14 @@ impl Camera {
         // Calculate the location of the upper left pixel.
         let viewport_upper_left =
             center -
-            Vec3{x: 0.0, y: 0.0, z: focal_length} -
-            viewport_u / 2.0 -
-            viewport_v / 2.0;
+                (w * focal_length) -
+                viewport_u / 2.0 -
+                viewport_v / 2.0;
         let pixel00_loc = viewport_upper_left + (pixel_delta_u + pixel_delta_v) * 0.5;
 
         Camera{
             image_width,
             image_height,
-            aspect_ratio,
             samples,
             pixel_samples_scale,
             max_depth,
