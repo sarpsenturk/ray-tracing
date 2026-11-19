@@ -2,9 +2,10 @@ use crate::object::{Hittable, Scene};
 use crate::vec3::{cross, Vec3, random_in_unit_disk};
 use crate::color::{write_color, Color};
 use crate::ray::Ray;
-use std::io::{self, Write};
+use std::io::{self, BufWriter, Write};
 use std::time::Instant;
 use rand::{self};
+use crate::framebuffer::Framebuffer;
 
 pub struct Camera {
     image_width: i32,
@@ -82,8 +83,7 @@ impl Camera {
     }
 
     pub fn render<T: Write>(&self, output: &mut T, scene: &Scene) -> io::Result<()> {
-        write!(output, "P3\n")?;
-        write!(output, "{} {}\n255\n", self.image_width, self.image_height)?;
+        let mut framebuffer = Framebuffer::new(self.image_width, self.image_height);
         let start = Instant::now();
         for j in 0..self.image_height {
             eprint!("\rProgress: {:.2}%", j as f32 / self.image_height as f32 * 100.0);
@@ -94,12 +94,20 @@ impl Camera {
                               let ray = self.get_ray(i, j);
                               acc + ray_color(&ray, self.max_depth, scene)
                           });
-                write_color(output, &(color * self.pixel_samples_scale))?
+                framebuffer.write(j, i, u32::from(color * self.pixel_samples_scale));
             }
         }
         let time = start.elapsed();
         eprint!("\nDone. Finished in {} seconds\n", time.as_secs());
-        Ok(())
+
+        let mut writer = BufWriter::new(output);
+        write!(writer, "P3\n")?;
+        write!(writer, "{} {}\n255\n", self.image_width, self.image_height)?;
+        framebuffer
+            .buffer()
+            .iter()
+            .map(Color::from)
+            .try_for_each(|color| write_color(&mut writer, &color))
     }
 
     fn get_ray(&self, i: i32, j: i32) -> Ray {

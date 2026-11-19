@@ -12,8 +12,6 @@ pub struct Vec3 {
 }
 
 impl Vec3 {
-    pub fn from(value: f64) -> Vec3 { Vec3{x: value, y: value, z: value} }
-
     pub fn sqr_magnitude(&self) -> f64 {
         self.x * self.x +
             self.y * self.y +
@@ -30,6 +28,10 @@ impl Vec3 {
         let s = 1e-8;
         self.x.abs() < s &&  self.y.abs() < s &&  self.z.abs() < s
     }
+}
+
+impl From<f64> for Vec3 {
+    fn from(value: f64) -> Vec3 { Vec3{x: value, y: value, z: value} }
 }
 
 impl ops::Neg for Vec3 {
