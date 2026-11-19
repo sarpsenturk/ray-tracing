@@ -1,5 +1,5 @@
 use crate::object::{Hittable, Scene};
-use crate::vec3::Vec3;
+use crate::vec3::{random_unit_vector, Vec3};
 use crate::color::{write_color, Color};
 use crate::ray::Ray;
 use std::io::{self, Write};
@@ -11,6 +11,7 @@ pub struct Camera {
     aspect_ratio: f64,
     samples: i32,
     pixel_samples_scale: f64,
+    max_depth: i32,
     center: Vec3,
     pixel00_loc: Vec3,
     pixel_delta_u: Vec3,
@@ -18,7 +19,7 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(image_width: i32, image_height: i32, samples: i32) -> Camera {
+    pub fn new(image_width: i32, image_height: i32, samples: i32, max_depth: i32) -> Camera {
         let center = Vec3::from(0.0);
         let aspect_ratio = image_width as f64 / image_height as f64;
         let pixel_samples_scale = 1.0 / samples as f64;
@@ -50,6 +51,7 @@ impl Camera {
             aspect_ratio,
             samples,
             pixel_samples_scale,
+            max_depth,
             center,
             pixel00_loc,
             pixel_delta_u,
@@ -66,7 +68,8 @@ impl Camera {
                 let color = (0..self.samples)
                     .fold(Vec3::from(0.0),
                           |acc, _| {
-                              acc + ray_color(&self.get_ray(i, j), scene)
+                              let ray = self.get_ray(i, j);
+                              acc + ray_color(&ray, self.max_depth, scene)
                           });
                 write_color(output, &(color * self.pixel_samples_scale))?
             }
@@ -98,9 +101,12 @@ impl Camera {
     }
 }
 
-fn ray_color(ray: &Ray, scene: &Scene) -> Color {
-    if let Some(hit) = scene.hit(ray, 0.0, f64::INFINITY) {
-        return *hit.normal() + Color::from(1.0) * 0.5;
+fn ray_color(ray: &Ray, depth: i32, scene: &Scene) -> Color {
+    if depth <= 0 { return Color::from(0.0); };
+
+    if let Some(hit) = scene.hit(ray, 0.001, f64::INFINITY) {
+        let direction = *hit.normal() + random_unit_vector();
+        return ray_color(&Ray::new(*hit.point(), direction), depth - 1, scene) * 0.5;
     }
     let unit = ray.direction().normalized();
     let a = 0.5 * (unit.y + 1.0);

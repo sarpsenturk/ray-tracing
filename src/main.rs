@@ -22,7 +22,7 @@ fn main() -> io::Result<()> {
     ];
 
     // Render
-    let camera = Camera::new(IMAGE_WIDTH, IMAGE_HEIGHT, 10);
+    let camera = Camera::new(IMAGE_WIDTH, IMAGE_HEIGHT, 10, 50);
     let mut output = io::stdout();
     camera.render(&mut output, &scene)
 }

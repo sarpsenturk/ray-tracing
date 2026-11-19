@@ -1,4 +1,7 @@
 use std::ops;
+use rand::distr::StandardUniform;
+use rand::prelude::Distribution;
+use rand::{Rng, RngExt};
 
 // 3-component 64-bit floating point vector
 #[derive(Debug, PartialEq, Copy, Clone, Default)]
@@ -123,6 +126,16 @@ impl ops::DivAssign<f64> for Vec3 {
     }
 }
 
+impl Distribution<Vec3> for StandardUniform {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec3 {
+        Vec3{
+            x: rng.random(),
+            y: rng.random(),
+            z: rng.random(),
+        }
+    }
+}
+
 pub fn dot(lhs: &Vec3, rhs: &Vec3) -> f64 {
     lhs.x * rhs.x +
         lhs.y * rhs.y +
@@ -135,6 +148,19 @@ pub fn cross(lhs: &Vec3, rhs: &Vec3) -> Vec3 {
         y: lhs.z * rhs.x - lhs.x * rhs.z,
         z: lhs.x * rhs.y - lhs.y * rhs.x,
     }
+}
+
+pub fn random_unit_vector() -> Vec3 {
+    loop {
+        let p: Vec3 = rand::random();
+        let lensq = p.sqr_magnitude();
+        if 1e-60 < lensq && lensq <= 1.0 { return p / lensq.sqrt() }
+    }
+}
+
+pub fn random_on_hemisphere(normal: &Vec3) -> Vec3 {
+    let on_unit_sphere = random_unit_vector();
+    if dot(&on_unit_sphere, &normal) > 0.0 { on_unit_sphere } else { -on_unit_sphere }
 }
 
 #[cfg(test)]
