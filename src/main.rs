@@ -5,7 +5,6 @@ pub mod object;
 pub mod camera;
 pub mod material;
 
-use std::f64::consts::PI;
 use crate::vec3::{Vec3};
 use crate::object::{Sphere, Scene};
 use crate::camera::Camera;
@@ -49,17 +48,20 @@ fn main() -> io::Result<()> {
     ];
 
     // Render
-    let fov = 90.0;
+    let fov = 20.0;
     let samples = 10;
     let max_depth = 50;
     let camera_position = Vec3{x: -2.0, y: 2.0, z: 1.0};
     let camera_direction = Vec3{x: 0.0, y: 0.0, z: -1.0};
     let camera_up = Vec3{x: 0.0, y: 1.0, z: 0.0};
+    let defocus_angle = 10.0;
+    let defocus_distance = 3.4;
     let camera = Camera::new(
         IMAGE_WIDTH, IMAGE_HEIGHT,
         fov,
         samples, max_depth,
-        camera_position, camera_direction, camera_up
+        camera_position, camera_direction, camera_up,
+        defocus_angle, defocus_distance,
     );
     let mut output = io::stdout();
     camera.render(&mut output, &scene)

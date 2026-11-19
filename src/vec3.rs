@@ -163,6 +163,13 @@ pub fn random_unit_vector() -> Vec3 {
     }
 }
 
+pub fn random_in_unit_disk() -> Vec3 {
+    loop {
+        let p: Vec3 = rand::random();
+        if p.sqr_magnitude() < 1.0 { return p }
+    }
+}
+
 pub fn random_on_hemisphere(normal: &Vec3) -> Vec3 {
     let on_unit_sphere = random_unit_vector();
     if dot(&on_unit_sphere, &normal) > 0.0 { on_unit_sphere } else { -on_unit_sphere }
