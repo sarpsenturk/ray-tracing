@@ -1,18 +1,23 @@
+use crate::material::{Material, SurfaceOutput};
 use crate::vec3::{dot, Vec3};
 use crate::ray::Ray;
 
 pub struct Hit {
     point: Vec3,
     normal: Vec3,
+    surface: Option<SurfaceOutput>,
     time: f64,
 }
 
 impl Hit {
-    pub fn new(point: Vec3, normal: Vec3, time: f64) -> Hit { Hit{point, normal, time} }
+    pub fn new(point: Vec3, normal: Vec3, surface: Option<SurfaceOutput>, time: f64) -> Hit {
+        Hit{point, normal, surface, time}
+    }
 
     pub fn point(&self) -> &Vec3 { &self.point }
     pub fn normal(&self) -> &Vec3 { &self.normal }
     pub fn time(&self) -> f64 { self.time }
+    pub fn surface(&self) -> &Option<SurfaceOutput> { &self.surface }
 }
 
 pub trait Hittable {
@@ -38,10 +43,13 @@ impl Hittable for Scene {
 pub struct Sphere {
     center: Vec3,
     radius: f64,
+    material: Box<dyn Material>,
 }
 
 impl Sphere {
-    pub fn new(center: Vec3, radius: f64) -> Sphere { Sphere{center, radius} }
+    pub fn new(center: Vec3, radius: f64, material: Box<dyn Material>) -> Self {
+        Self{center, radius, material}
+    }
 }
 
 impl Hittable for Sphere {
@@ -66,6 +74,8 @@ impl Hittable for Sphere {
         let point = ray.at(root);
         let normal = (point - self.center) / self.radius;
         let front_face = dot(ray.direction(), &normal) < 0.0;
-        Some(Hit::new(point, if front_face { normal } else { -normal }, root))
+        let normal = if front_face { normal } else { -normal };
+        let surface = self.material.scatter(ray, &point, &normal);
+        Some(Hit::new(point, normal, surface, root))
     }
 }

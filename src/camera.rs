@@ -1,5 +1,5 @@
 use crate::object::{Hittable, Scene};
-use crate::vec3::{random_unit_vector, Vec3};
+use crate::vec3::{Vec3};
 use crate::color::{write_color, Color};
 use crate::ray::Ray;
 use std::io::{self, Write};
@@ -105,8 +105,9 @@ fn ray_color(ray: &Ray, depth: i32, scene: &Scene) -> Color {
     if depth <= 0 { return Color::from(0.0); };
 
     if let Some(hit) = scene.hit(ray, 0.001, f64::INFINITY) {
-        let direction = *hit.normal() + random_unit_vector();
-        return ray_color(&Ray::new(*hit.point(), direction), depth - 1, scene) * 0.5;
+        if let Some(surface) = hit.surface() {
+            return *surface.color() * ray_color(surface.scattered(), depth - 1, scene);
+        }
     }
     let unit = ray.direction().normalized();
     let a = 0.5 * (unit.y + 1.0);

@@ -25,6 +25,11 @@ impl Vec3 {
     pub fn normalized(&self) -> Vec3 { *self / self.magnitude() }
 
     pub fn normalize(&mut self) -> &mut Self { *self = self.normalized(); self }
+
+    pub fn near_zero(&self) -> bool {
+        let s = 1e-8;
+        self.x.abs() < s &&  self.y.abs() < s &&  self.z.abs() < s
+    }
 }
 
 impl ops::Neg for Vec3 {
@@ -161,6 +166,10 @@ pub fn random_unit_vector() -> Vec3 {
 pub fn random_on_hemisphere(normal: &Vec3) -> Vec3 {
     let on_unit_sphere = random_unit_vector();
     if dot(&on_unit_sphere, &normal) > 0.0 { on_unit_sphere } else { -on_unit_sphere }
+}
+
+pub fn reflect(vector: &Vec3, normal: &Vec3) -> Vec3 {
+    *vector - *normal * 2.0 * dot(vector, normal)
 }
 
 #[cfg(test)]
