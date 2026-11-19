@@ -73,10 +73,14 @@ impl Material for DielectricMaterial {
     fn scatter(&self, ray_in: &Ray, point: &Vec3, normal: &Vec3, front_face: bool) -> Option<SurfaceOutput> {
         let ri = if front_face { 1.0 / self.refraction_index } else { self.refraction_index };
         let direction = ray_in.direction().normalized();
-        let refracted = refract(&direction, normal, ri);
+        let cos_theta = dot(&-direction, normal).min(1.0);
+        let sin_theta = (1.0 - cos_theta*cos_theta).sqrt();
+
+        let cant_refract = ri * sin_theta > 1.0;
+        let direction = if cant_refract { reflect(&direction, normal) } else { refract(&direction, normal, ri) };
         Some(SurfaceOutput::new(
             Color::from(1.0),
-            Ray::new(*point, refracted),
+            Ray::new(*point, direction)
         ))
     }
 }

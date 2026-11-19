@@ -37,7 +37,7 @@ fn main() -> io::Result<()> {
         Box::new(Sphere::new(
             Vec3{x: -1.0, y: 0.0, z: -1.0},
             0.5,
-            Box::new(DielectricMaterial::new(1.50))
+            Box::new(DielectricMaterial::new(1.0 / 1.33))
         )),
         // Right
         Box::new(Sphere::new(
