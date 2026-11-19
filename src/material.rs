@@ -77,10 +77,19 @@ impl Material for DielectricMaterial {
         let sin_theta = (1.0 - cos_theta*cos_theta).sqrt();
 
         let cant_refract = ri * sin_theta > 1.0;
-        let direction = if cant_refract { reflect(&direction, normal) } else { refract(&direction, normal, ri) };
+        let direction = if cant_refract || reflectance(cos_theta, ri) > rand::random::<f64>() {
+            reflect(&direction, normal)
+        } else { refract(&direction, normal, ri) };
         Some(SurfaceOutput::new(
             Color::from(1.0),
             Ray::new(*point, direction)
         ))
     }
+}
+
+fn reflectance(cos: f64, ri: f64) -> f64 {
+    // Use Schlick's approximation for reflectance.
+    let r0 = (1.0 - ri) / (1.0 + ri);
+    let r0 = r0 * r0;
+    r0 + (1.0 + r0) * (1.0 - cos).powi(5)
 }
