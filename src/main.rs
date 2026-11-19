@@ -1,10 +1,12 @@
 pub mod vec3;
 pub mod color;
 pub mod ray;
+pub mod object;
 
-use crate::vec3::{dot, Vec3};
+use crate::vec3::{Vec3};
 use crate::color::{Color, write_color};
 use crate::ray::{Ray};
+use crate::object::{Sphere, Scene, Hittable};
 use std::io::{self, Write};
 
 // Width of the final image output
@@ -21,20 +23,9 @@ const VIEWPORT_HEIGHT: f64 = 2.0;
 const VIEWPORT_WIDTH: f64 = VIEWPORT_HEIGHT * ASPECT_RATIO;
 const FOCAL_LENGTH: f64 = 1.0;
 
-fn hit_sphere(center: &Vec3, radius: f64, ray: &Ray) -> f64 {
-    let oc = center - ray.origin();
-    let a = ray.direction().sqr_magnitude();
-    let h = dot(ray.direction(), &oc);
-    let c = oc.sqr_magnitude() - radius*radius;
-    let discriminant = h*h - a*c;
-    if discriminant < 0.0 { -1.0 } else { (h - discriminant.sqrt()) / a }
-}
-
-fn ray_color(ray: &Ray) -> Color {
-    let t = hit_sphere(&Vec3{x: 0.0, y: 0.0, z: -1.0}, 0.5, ray);
-    if  t > 0.0 {
-        let normal = (ray.at(t) - Vec3{x: 0.0, y: 0.0, z: -1.0}).normalized();
-        return Color{x: normal.x + 1.0, y: normal.y + 1.0, z: normal.z} * 0.5;
+fn ray_color(ray: &Ray, scene: &Scene) -> Color {
+    if let Some(hit) = scene.hit(ray, 0.0, f64::INFINITY) {
+        return *hit.normal() + Color::from(1.0) * 0.5;
     }
     let unit = ray.direction().normalized();
     let a = 0.5 * (unit.y + 1.0);
@@ -61,6 +52,12 @@ fn main() {
             viewport_v / 2.0;
     let pixel00_loc = viewport_upper_left + Vec3::from(0.5)  * (pixel_delta_u + pixel_delta_v);
 
+    // Scene/world
+    let scene : Scene = vec![
+        Box::new(Sphere::new(Vec3{x: 0.0, y: 0.0, z: -1.0}, 0.5)),
+        Box::new(Sphere::new(Vec3{x: 0.0, y: -100.5, z: -1.0}, 100.0))
+    ];
+
     // Render
     let mut output = io::stdout();
     write!(output, "P3\n").unwrap();
@@ -71,7 +68,7 @@ fn main() {
         for i in 0..IMAGE_WIDTH {
             let pixel_center = pixel00_loc + (pixel_delta_u * i as f64) + (pixel_delta_v * j as f64);
             let ray_direction = pixel_center - camera_position;
-            let color = ray_color(&Ray::new(camera_position, ray_direction));
+            let color = ray_color(&Ray::new(camera_position, ray_direction), &scene);
             write_color(&mut output, &color).unwrap()
         }
     }
