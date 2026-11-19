@@ -3,6 +3,7 @@ use crate::vec3::{cross, Vec3, random_in_unit_disk};
 use crate::color::{write_color, Color};
 use crate::ray::Ray;
 use std::io::{self, Write};
+use std::time::Instant;
 use rand::{self};
 
 pub struct Camera {
@@ -83,6 +84,7 @@ impl Camera {
     pub fn render<T: Write>(&self, output: &mut T, scene: &Scene) -> io::Result<()> {
         write!(output, "P3\n")?;
         write!(output, "{} {}\n255\n", self.image_width, self.image_height)?;
+        let start = Instant::now();
         for j in 0..self.image_height {
             eprint!("\rProgress: {:.2}%", j as f32 / self.image_height as f32 * 100.0);
             for i in 0..self.image_width {
@@ -95,7 +97,8 @@ impl Camera {
                 write_color(output, &(color * self.pixel_samples_scale))?
             }
         }
-        eprint!("\nDone");
+        let time = start.elapsed();
+        eprint!("\nDone. Finished in {} seconds\n", time.as_secs());
         Ok(())
     }
 
