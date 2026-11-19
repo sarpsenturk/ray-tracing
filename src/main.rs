@@ -10,7 +10,7 @@ use crate::object::{Sphere, Scene};
 use crate::camera::Camera;
 use std::io::{self};
 use crate::color::Color;
-use crate::material::{LambertianMaterial, MetallicMaterial};
+use crate::material::{DielectricMaterial, LambertianMaterial, MetallicMaterial};
 
 // Width of the final image output
 const IMAGE_WIDTH: i32 = 960;
@@ -21,21 +21,25 @@ fn main() -> io::Result<()> {
 
     // Scene/world
     let scene : Scene = vec![
+        // Ground
         Box::new(Sphere::new(
             Vec3{x: 0.0, y: -100.5, z: -1.0},
             100.0,
             Box::new(LambertianMaterial::new(Color{x: 0.8, y: 0.8, z: 0.0}))
         )),
+        // Center
         Box::new(Sphere::new(
             Vec3{x: 0.0, y: 0.0, z: -1.2},
             0.5,
             Box::new(LambertianMaterial::new(Color{x: 0.1, y: 0.2, z: 0.5}))
         )),
+        // Left
         Box::new(Sphere::new(
             Vec3{x: -1.0, y: 0.0, z: -1.0},
             0.5,
-            Box::new(MetallicMaterial::new(Color{x: 0.8, y: 0.8, z: 0.8}, 0.3))
+            Box::new(DielectricMaterial::new(1.50))
         )),
+        // Right
         Box::new(Sphere::new(
             Vec3{x: 1.0, y: 0.0, z: -1.0},
             0.5,

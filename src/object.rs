@@ -75,7 +75,7 @@ impl Hittable for Sphere {
         let normal = (point - self.center) / self.radius;
         let front_face = dot(ray.direction(), &normal) < 0.0;
         let normal = if front_face { normal } else { -normal };
-        let surface = self.material.scatter(ray, &point, &normal);
+        let surface = self.material.scatter(ray, &point, &normal, front_face);
         Some(Hit::new(point, normal, surface, root))
     }
 }

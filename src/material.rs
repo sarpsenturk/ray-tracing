@@ -1,6 +1,6 @@
 use crate::color::Color;
 use crate::ray::Ray;
-use crate::vec3::{random_unit_vector, reflect, Vec3, dot};
+use crate::vec3::{random_unit_vector, reflect, Vec3, dot, refract};
 
 pub struct SurfaceOutput {
     color: Color,
@@ -14,7 +14,7 @@ impl SurfaceOutput {
 }
 
 pub trait Material {
-    fn scatter(&self, ray_in: &Ray, point: &Vec3, normal: &Vec3) -> Option<SurfaceOutput>;
+    fn scatter(&self, ray_in: &Ray, point: &Vec3, normal: &Vec3, front_face: bool) -> Option<SurfaceOutput>;
 }
 
 pub struct LambertianMaterial {
@@ -26,7 +26,7 @@ impl LambertianMaterial {
 }
 
 impl Material for LambertianMaterial {
-    fn scatter(&self, _ray_in: &Ray, point: &Vec3, normal: &Vec3) -> Option<SurfaceOutput> {
+    fn scatter(&self, _ray_in: &Ray, point: &Vec3, normal: &Vec3, _front_face: bool) -> Option<SurfaceOutput> {
         let direction = *normal + random_unit_vector();
         let scatter_direction = if direction.near_zero() { *normal } else { direction };
         Some(SurfaceOutput::new(
@@ -46,7 +46,7 @@ impl MetallicMaterial {
 }
 
 impl Material for MetallicMaterial {
-    fn scatter(&self, ray_in: &Ray, point: &Vec3, normal: &Vec3) -> Option<SurfaceOutput> {
+    fn scatter(&self, ray_in: &Ray, point: &Vec3, normal: &Vec3, _front_face: bool) -> Option<SurfaceOutput> {
         let reflected =
             reflect(ray_in.direction(), normal).normalized() +
                 (random_unit_vector() * self.fuzz);
@@ -58,5 +58,25 @@ impl Material for MetallicMaterial {
         } else {
             None
         }
+    }
+}
+
+pub struct DielectricMaterial {
+    refraction_index: f64,
+}
+
+impl DielectricMaterial {
+    pub fn new(refraction_index: f64) -> Self { Self{refraction_index} }
+}
+
+impl Material for DielectricMaterial {
+    fn scatter(&self, ray_in: &Ray, point: &Vec3, normal: &Vec3, front_face: bool) -> Option<SurfaceOutput> {
+        let ri = if front_face { 1.0 / self.refraction_index } else { self.refraction_index };
+        let direction = ray_in.direction().normalized();
+        let refracted = refract(&direction, normal, ri);
+        Some(SurfaceOutput::new(
+            Color::from(1.0),
+            Ray::new(*point, refracted),
+        ))
     }
 }
