@@ -1,7 +1,7 @@
 use std::ops;
 
 // 3-component 64-bit floating point vector
-#[derive(Debug, PartialEq, Copy, Clone, )]
+#[derive(Debug, PartialEq, Copy, Clone, Default)]
 pub struct Vec3 {
     pub x: f64,
     pub y: f64,
@@ -9,6 +9,8 @@ pub struct Vec3 {
 }
 
 impl Vec3 {
+    pub fn from(value: f64) -> Vec3 { Vec3{x: value, y: value, z: value} }
+
     pub fn sqr_magnitude(&self) -> f64 {
         self.x * self.x +
             self.y * self.y +
@@ -71,6 +73,17 @@ impl ops::Mul<f64> for Vec3 {
             x: self.x * rhs,
             y: self.y * rhs,
             z: self.z * rhs,
+        }
+    }
+}
+
+impl ops::Mul<Vec3> for Vec3 {
+    type Output = Vec3;
+    fn mul(self, rhs: Vec3) -> Self::Output {
+        Vec3{
+            x: self.x * rhs.x,
+            y: self.y * rhs.y,
+            z: self.z * rhs.z,
         }
     }
 }
