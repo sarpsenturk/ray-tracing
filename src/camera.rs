@@ -5,6 +5,7 @@ use crate::ray::Ray;
 use std::io::{self, BufWriter, Write};
 use std::num::NonZeroUsize;
 use std::time::Instant;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use rand::{self};
 
 #[derive(Debug, Copy, Clone)]
@@ -21,6 +22,32 @@ pub struct Camera {
     defocus_angle: f64,
     defocus_disk_u: Vec3,
     defocus_disk_v: Vec3,
+}
+
+const TILE_SIZE: usize = 32;
+
+#[derive(Debug, Copy, Clone)]
+struct Tile {
+    x: usize,
+    y: usize,
+    width: usize,
+    height: usize,
+}
+
+fn make_tiles(image_width: usize, image_height: usize, tile_size: usize) -> Vec<Tile> {
+    let mut tiles = Vec::new();
+    for y in (0..image_height).step_by(tile_size) {
+        for x in (0..image_width).step_by(tile_size) {
+            tiles.push(Tile {
+                x,
+                y,
+                // Edge tiles may be smaller than tile_size
+                width: tile_size.min(image_width - x),
+                height: tile_size.min(image_height - y),
+            });
+        }
+    }
+    tiles
 }
 
 impl Camera {
@@ -84,25 +111,52 @@ impl Camera {
     }
 
     pub fn render<T: Write>(&self, output: &mut T, scene: &Scene) -> io::Result<()> {
-        // Allocate framebuffer
-        let mut framebuffer = vec![u32::default(); (self.image_width * self.image_height) as usize];
+        let width = self.image_width as usize;
+        let height = self.image_height as usize;
+        let mut framebuffer = vec![u32::default(); width * height];
 
-        // Determine number of hardware threads
-        let thread_count = std::thread::available_parallelism().map(NonZeroUsize::get).unwrap_or(1);
-        eprintln!("Using {thread_count} threads...");
+        let tiles = make_tiles(width, height, TILE_SIZE);
+        let thread_count = std::thread::available_parallelism()
+            .map(NonZeroUsize::get)
+            .unwrap_or(1)
+            .min(tiles.len());
+        eprintln!("Using {thread_count} threads, {} tiles of {TILE_SIZE}x{TILE_SIZE}...", tiles.len());
 
-        let rows_per_thread = (self.image_height as usize + thread_count - 1) / thread_count;
         let start = Instant::now();
-        std::thread::scope(|s| {
-           for (i, chunk) in framebuffer
-               .chunks_mut(rows_per_thread * self.image_width as usize)
-               .enumerate() {
-               let camera = self.clone();
-               let start = i * rows_per_thread;
-               let end = start + chunk.len() / self.image_width as usize;
-               s.spawn(move || render(camera, start, end, scene, chunk));
-           }
+        let next_tile = AtomicUsize::new(0);
+
+        // Each worker returns the tiles it rendered, along with their pixels.
+        let results: Vec<Vec<(Tile, Vec<u32>)>> = std::thread::scope(|s| {
+            let tiles = &tiles;
+            let next_tile = &next_tile;
+            let mut handles = Vec::with_capacity(thread_count);
+
+            for _ in 0..thread_count {
+                let camera = *self; // Camera is Copy
+                handles.push(s.spawn(move || {
+                    let mut done = Vec::new();
+                    loop {
+                        let idx = next_tile.fetch_add(1, Ordering::Relaxed);
+                        let Some(&tile) = tiles.get(idx) else { break };
+                        done.push((tile, render_tile(&camera, &tile, scene)));
+                    }
+                    done
+                }));
+            }
+
+            handles.into_iter().map(|h| h.join().unwrap()).collect()
         });
+
+        // Copy each tile into its place in the framebuffer.
+        for (tile, pixels) in results.into_iter().flatten() {
+            for row in 0..tile.height {
+                let dst = (tile.y + row) * width + tile.x;
+                let src = row * tile.width;
+                framebuffer[dst..dst + tile.width]
+                    .copy_from_slice(&pixels[src..src + tile.width]);
+            }
+        }
+
         let time = start.elapsed();
         eprint!("\nDone. Finished in {} seconds\n", time.as_secs());
 
@@ -145,19 +199,19 @@ impl Camera {
     }
 }
 
-fn render(camera: Camera, start: usize, end: usize, scene: &Scene, framebuffer: &mut [u32]) {
-    let width = camera.image_width as usize;
-    for j in start..end {
-        for i in 0..width {
+fn render_tile(camera: &Camera, tile: &Tile, scene: &Scene) -> Vec<u32> {
+    let mut pixels = Vec::with_capacity(tile.width * tile.height);
+    for j in tile.y..tile.y + tile.height {
+        for i in tile.x..tile.x + tile.width {
             let mut color = Color::from(0.0);
             for _ in 0..camera.samples {
                 let ray = camera.get_ray(i as i32, j as i32);
-                color += ray_color(&ray, camera.max_depth, scene)
+                color += ray_color(&ray, camera.max_depth, scene);
             }
-            let idx = (j - start) * camera.image_width as usize + i; // Index relative to this chunk
-            framebuffer[idx] = u32::from(color * camera.pixel_samples_scale);
+            pixels.push(u32::from(color * camera.pixel_samples_scale));
         }
     }
+    pixels
 }
 
 fn ray_color(ray: &Ray, depth: i32, scene: &Scene) -> Color {
